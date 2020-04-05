@@ -7,9 +7,10 @@ with open("requirements.txt") as f:
     install_requires = [s.strip() for s in f.readlines()]
 
 setup(
-    name="Connectbox Prometheus",
-    version="0.1.0",
+    name="connectbox-prometheus",
+    version="0.1.1",
     author="Michael Bugert",
+    author_email="git@mbugert.de",
     description="Prometheus exporter for the modem connection status of UPC Connect Boxes",
     long_description=long_descr,
     long_description_content_type="text/markdown",
@@ -26,6 +27,8 @@ setup(
         "Intended Audience :: System Administrators",
         "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
         "Topic :: System :: Networking :: Monitoring",
     ]
 )

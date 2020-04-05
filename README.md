@@ -1,4 +1,7 @@
 # Connectbox Prometheus
+[![PyPI - License](https://img.shields.io/pypi/l/connectbox-prometheus.svg)](https://pypi.org/project/connectbox-prometheus/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/connectbox-prometheus.svg)](https://pypi.org/project/connectbox-prometheus/)
+[![PyPI](https://img.shields.io/pypi/v/connectbox-prometheus.svg)](https://pypi.org/project/connectbox-prometheus/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 A [Prometheus](https://prometheus.io/) exporter for the modem connection status of UPC Connect Boxes (used by Unitymedia in Germany, Irish Virgin Media, Ziggo in the Netherlands, and probably several others).
