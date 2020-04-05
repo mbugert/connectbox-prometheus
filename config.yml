@@ -1,0 +1,8 @@
+# Connect Box IP address
+ip_address: 192.168.0.1
+
+# Connect Box web interface password
+password: WhatEverYourPasswordIs
+
+# port on which this exporter exposes metrics
+exporter_port: 9705

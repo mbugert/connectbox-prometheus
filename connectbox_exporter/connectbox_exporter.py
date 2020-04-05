@@ -13,12 +13,13 @@ from connect_box.exceptions import (
 )
 from prometheus_client import start_http_server, CollectorRegistry
 from prometheus_client.core import GaugeMetricFamily, CounterMetricFamily
+from ruamel.yaml import YAML
 
 
 class ConnectBoxCollector(object):
-    def __init__(self, logger: logging.Logger, host: str, password: str):
+    def __init__(self, logger: logging.Logger, ip_address: str, password: str):
         self.logger = logger
-        self.host = host
+        self.ip_address = ip_address
         self.password = password
 
     def collect(self):
@@ -176,7 +177,7 @@ class ConnectBoxCollector(object):
     def _retrieve_values(self) -> Optional[Tuple]:
         async def retrieve():
             async with aiohttp.ClientSession() as session:
-                client = ConnectBox(session, self.password, host=self.host)
+                client = ConnectBox(session, self.password, host=self.ip_address)
                 try:
                     await client.async_get_downstream()
                     await client.async_get_upstream()
@@ -196,25 +197,16 @@ class ConnectBoxCollector(object):
 
 
 @click.command()
-@click.option(
-    "--port",
-    default=9705,
-    help="Port where this exporter serves metrics",
-    type=int,
-    show_default=True,
-)
-@click.option("--host", default="192.168.0.1", help="Connect Box IP address", type=str)
-@click.option(
-    "--pw", help="Connect Box web interface password", required=True, type=str
-)
+@click.argument("config_file", type=click.Path(exists=True, dir_okay=False))
 @click.option("-v", "--verbose", help="Print more log messages", is_flag=True)
-def main(port, host, pw, verbose):
+def main(config_file, verbose):
+    """
+    Launch the exporter using a YAML config file.
+    """
+    # logging setup
     log_level = logging.DEBUG if verbose else logging.INFO
-
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger(__file__)
     logger.setLevel(log_level)
-
-    # log to stdout
     handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(log_level)
     formatter = logging.Formatter(
@@ -223,12 +215,31 @@ def main(port, host, pw, verbose):
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
+    # load YAML config
+    IP_ADDRESS = "ip_address"
+    PASSWORD = "password"
+    EXPORTER_PORT = "exporter_port"
+    yaml = YAML()
+    with open(config_file) as f:
+        config = yaml.load(f)
+    if not all(key in config for key in [IP_ADDRESS, PASSWORD, EXPORTER_PORT]):
+        logger.error(
+            "Configuration YAML is missing entries. Please see README.md for an example."
+        )
+        sys.exit(1)
+
     # fire up collector
     reg = CollectorRegistry()
-    reg.register(ConnectBoxCollector(logger, host=host, password=pw))
-    start_http_server(port, registry=reg)
+    reg.register(
+        ConnectBoxCollector(
+            logger, ip_address=config[IP_ADDRESS], password=config[PASSWORD]
+        )
+    )
+    start_http_server(config[EXPORTER_PORT], registry=reg)
 
-    logger.info("Exporter started.")
+    logger.info(
+        f"Exporter running at http://localhost:{config[EXPORTER_PORT]}, querying {config[IP_ADDRESS]}"
+    )
 
     # stall the main thread indefinitely
     while True:
