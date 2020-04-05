@@ -16,7 +16,9 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/mbugert/connectbox-prometheus",
     entry_points={
-        "console_scripts": ['connectbox_exporter = connectbox_exporter.connectbox_exporter:main']
+        "console_scripts": [
+            "connectbox_exporter = connectbox_exporter.connectbox_exporter:main"
+        ]
     },
     packages=find_packages(),
     install_requires=install_requires,
@@ -30,5 +32,5 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Topic :: System :: Networking :: Monitoring",
-    ]
+    ],
 )
