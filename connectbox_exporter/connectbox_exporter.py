@@ -1,6 +1,8 @@
 import asyncio
 import logging
 import sys
+import threading
+import time
 from typing import Tuple, Optional
 
 import aiohttp
@@ -11,8 +13,9 @@ from connect_box.exceptions import (
     ConnectBoxLoginError,
     ConnectBoxNoDataAvailable,
 )
-from prometheus_client import start_http_server, CollectorRegistry
+from prometheus_client import CollectorRegistry, MetricsHandler
 from prometheus_client.core import GaugeMetricFamily, CounterMetricFamily
+from prometheus_client.exposition import _ThreadingSimpleServer
 from ruamel.yaml import YAML
 
 
@@ -235,12 +238,21 @@ def main(config_file, verbose):
             logger, ip_address=config[IP_ADDRESS], password=config[PASSWORD]
         )
     )
-    start_http_server(config[EXPORTER_PORT], registry=reg)
+
+    # start http server
+    CustomMetricsHandler = MetricsHandler.factory(reg)
+    httpd = _ThreadingSimpleServer(("", config[EXPORTER_PORT]), CustomMetricsHandler)
+    httpd_thread = threading.Thread(target=httpd.serve_forever)
+    httpd_thread.start()
 
     logger.info(
         f"Exporter running at http://localhost:{config[EXPORTER_PORT]}, querying {config[IP_ADDRESS]}"
     )
 
-    # stall the main thread indefinitely
-    while True:
-        input()
+    # wait indefinitely
+    try:
+        while True:
+            time.sleep(3)
+    except KeyboardInterrupt:
+        httpd.shutdown()
+        httpd_thread.join()
