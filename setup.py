@@ -8,7 +8,7 @@ with open("requirements.txt") as f:
 
 setup(
     name="connectbox-prometheus",
-    version="0.1.1",
+    version="0.1.2",
     author="Michael Bugert",
     author_email="git@mbugert.de",
     description="Prometheus exporter for the modem connection status of UPC Connect Boxes",
