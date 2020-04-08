@@ -90,9 +90,9 @@ class ConnectBoxCollector(object):
                 "Downstream channel QAM lock status",
                 labels=[CHANNEL_ID],
             )
-            ds_freq_locked = GaugeMetricFamily(
+            ds_fec_locked = GaugeMetricFamily(
                 PREFIX + "_downstream_freq_locked",
-                "Downstream channel frequency lock status",
+                "Downstream channel forward error correction lock status",
                 labels=[CHANNEL_ID],
             )
             ds_mpeg_locked = GaugeMetricFamily(
@@ -111,7 +111,7 @@ class ConnectBoxCollector(object):
                 ds_pre_rs.add_metric(labels, ds_ch.preRs)
                 ds_post_rs.add_metric(labels, ds_ch.postRs)
                 ds_qam_locked.add_metric(labels, int(ds_ch.qamLocked))
-                ds_freq_locked.add_metric(labels, int(ds_ch.fecLocked))
+                ds_fec_locked.add_metric(labels, int(ds_ch.fecLocked))
                 ds_mpeg_locked.add_metric(labels, int(ds_ch.mpegLocked))
             for metric in [
                 ds_frequency,
@@ -121,7 +121,7 @@ class ConnectBoxCollector(object):
                 ds_pre_rs,
                 ds_post_rs,
                 ds_qam_locked,
-                ds_freq_locked,
+                ds_fec_locked,
                 ds_mpeg_locked,
             ]:
                 yield metric
@@ -185,7 +185,6 @@ class ConnectBoxCollector(object):
                     await client.async_get_downstream()
                     await client.async_get_upstream()
                     await client.async_get_devices()
-                    await client.async_close_session()
                     return client.ds_channels, client.us_channels, client.devices
                 except ConnectBoxLoginError:
                     self.logger.warning(
@@ -195,6 +194,8 @@ class ConnectBoxCollector(object):
                 except (ConnectBoxConnectionError, ConnectBoxNoDataAvailable):
                     self.logger.warning("Connection error or not data available.")
                     return None
+                finally:
+                    await client.async_close_session()
 
         return asyncio.run(retrieve())
 
