@@ -1,0 +1,5 @@
+click==7.1.1
+compal==0.1.1
+deepmerge==0.1.0
+prometheus-client==0.7.1
+ruamel.yaml==0.16.10

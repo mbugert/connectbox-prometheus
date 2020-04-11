@@ -6,25 +6,23 @@
 
 A [Prometheus](https://prometheus.io/) exporter for the modem connection status of UPC Connect Boxes (used by Unitymedia in Germany, Irish Virgin Media, Ziggo in the Netherlands, and probably several others).
 
-Makes thorough use of [python-connect-box](https://github.com/fabaff/python-connect-box) by [@fabaff](https://github.com/fabaff) (thanks!).
+Makes thorough use of [compal_CH7465LG_py](https://github.com/ties/compal_CH7465LG_py) by [@ties](https://github.com/ties/) (thanks!).
 
 ## Installation
-You need python3.6 or higher. On your Prometheus server host, install the exporter via
+On your Prometheus server host:
 
-`pip3 install connectbox-prometheus`
+1. [Create a virtual environment](https://packaging.python.org/tutorials/installing-packages/#creating-virtual-environments) using python3.7 or higher
+2. Install the exporter via `pip install connectbox-prometheus`
 
 ## Usage
 This exporter queries exactly one Connect Box as a remote target.
-To get started, modify `config.yml` from this repository or create your own with the following content:
+To get started, modify `config.yml` from this repository or start out with the following content:
 ```yaml
 # Connect Box IP address
 ip_address: 192.168.0.1
 
 # Connect Box web interface password
 password: WhatEverYourPasswordIs
-
-# port on which this exporter exposes metrics
-exporter_port: 9705
 ```
 
 Then run `connectbox_exporter path/to/your/config.yml`
@@ -40,21 +38,23 @@ scrape_configs:
 ```
 
 ## Exported Metrics
-| Metric name                                  | Description                                              |
-|:---------------------------------------------|:---------------------------------------------------------|
-| `connectbox_up`                              | Connect Box reachable yes/no                             |
-| `connectbox_num_devices`                     | Number of connected devices                              |
-| `connectbox_downstream_frequency_hz`         | Downstream channel frequency                             |
-| `connectbox_downstream_power_level_dbmv`     | Downstream channel power level in dBmV                   |
-| `connectbox_downstream_modulation_qam`       | Downstream channel modulation                            |
-| `connectbox_downstream_signal_to_noise_db`   | Downstream channel signal-to-noise in dB                 |
-| `connectbox_downstream_errors_pre_rs_total`  | Downstream channel errors before Reed-Solomon correction |
-| `connectbox_downstream_errors_post_rs_total` | Downstream channel errors after Reed-Solomon correction  |
-| `connectbox_downstream_qam_locked`           | Downstream channel QAM lock status                       |
-| `connectbox_downstream_freq_locked`          | Downstream channel frequency lock status                 |
-| `connectbox_downstream_mpeg_locked`          | Downstream channel MPEG lock status                      |
-| `connectbox_upstream_frequency_hz`           | Upstream channel frequency                               |
-| `connectbox_upstream_power_level_dbmv`       | Upstream channel power level in dBmV                     |
-| `connectbox_upstream_symbol_rate_ksps`       | Upstream channel symbol rate                             |
-| `connectbox_upstream_modulation_qam`         | Upstream channel modulation                              |
-| `connectbox_upstream_timeouts_total`         | Upstream channel timeouts                                |
+| Metric name                                           | Description                                               |
+|:------------------------------------------------------|:----------------------------------------------------------|
+| `connectbox_device_info`                              | Assorted device information                               |
+| `connectbox_uptime_seconds_total`                     | Device uptime in seconds                                  |
+| `connectbox_tuner_temperature_celsius`                | Tuner temperature                                         |
+| `connectbox_temperature_celsius`                      | Temperature                                               |
+| `connectbox_lan_user_speed_mbit`                      | LAN user network speed                                    |
+| `connectbox_downstream_frequency_hz`                  | Downstream channel frequency                              |
+| `connectbox_downstream_power_level_dbmv`              | Downstream channel power level                            |
+| `connectbox_downstream_snr_db`                        | Downstream channel signal-to-noise ratio (SNR)            |
+| `connectbox_downstream_rxmer_db`                      | Downstream channel receive modulation error ratio (RxMER) |
+| `connectbox_downstream_codewords_unerrored_total`     | Unerrored downstream codewords                            |
+| `connectbox_downstream_codewords_corrected_total`     | Corrected downstream codewords                            |
+| `connectbox_downstream_codewords_uncorrectable_total` | Uncorrectable downstream codewords                        |
+| `connectbox_upstream_frequency_hz`                    | Upstream channel frequency                                |
+| `connectbox_upstream_power_level_dbmv`                | Upstream channel power level                              |
+| `connectbox_upstream_symbol_rate_ksps`                | Upstream channel symbol rate                              |
+| `connectbox_upstream_timeouts_total`                  | Upstream channel timeout occurrences                      |
+| `connectbox_scrape_duration_seconds`                  | Connect Box exporter scrape duration                      |
+| `connectbox_scrape_success`                           | Connect Box exporter scrape success                       |
