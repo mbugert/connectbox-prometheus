@@ -75,6 +75,7 @@ class ConnectBoxCollector(object):
             finally:
                 # attempt logout in case of errors
                 try:
+                    self.logger.debug("Logging out.")
                     connectbox.logout()
                 except Exception as e:
                     self.logger.error(e)
@@ -106,7 +107,7 @@ def main(config_file, verbose):
     """
     # logging setup
     log_level = logging.DEBUG if verbose else logging.INFO
-    logger = logging.getLogger(__file__)
+    logger = logging.getLogger("connectbox_exporter")
     logger.setLevel(log_level)
     handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(log_level)

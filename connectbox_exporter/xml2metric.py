@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Iterable, Union, List
 import re
 from datetime import timedelta
@@ -7,6 +8,7 @@ from prometheus_client.metrics_core import (
     InfoMetricFamily,
     CounterMetricFamily,
     GaugeMetricFamily,
+    StateSetMetricFamily,
 )
 
 try:
@@ -255,6 +257,13 @@ class CmStateExtractor(XmlMetricsExtractor):
         )
 
 
+class ProvisioningStatus(Enum):
+    ONLINE = "Online"
+    PARTIAL_SERVICE_US = "Partial Service (US only)"
+    PARTIAL_SERVICE_DS = "Partial Service (DS only)"
+    PARTIAL_SERVICE_USDS = "Partial Service (US+DS)"
+
+
 class DeviceStatusExtractor(XmlMetricsExtractor):
     def __init__(self):
         super(DeviceStatusExtractor, self).__init__(
@@ -285,8 +294,8 @@ class DeviceStatusExtractor(XmlMetricsExtractor):
         # parse cmstatus
         root = etree.fromstring(cm_status_xml, parser=self.parser)
         assert root.tag == "cmstatus"
+        cable_modem_status = root.find("cm_comment").text
         provisioning_status = root.find("provisioning_st").text
-        cm_comment = root.find("cm_comment").text
 
         yield InfoMetricFamily(
             "connectbox_device",
@@ -297,9 +306,24 @@ class DeviceStatusExtractor(XmlMetricsExtractor):
                 "docsis_mode": docsis_mode,
                 "cm_provision_mode": cm_provision_mode,
                 "gw_provision_mode": gw_provision_mode,
-                "provisioning_status": provisioning_status,
-                "cm_comment": cm_comment,
+                "cable_modem_status": cable_modem_status,
                 "operator_id": operator_id,
+            },
+        )
+
+        # return an enum-style metric for the provisioning status
+        try:
+            enum_provisioning_status = ProvisioningStatus(provisioning_status)
+        except:
+            raise ValueError(
+                f"Unknown provisioning status '{provisioning_status}'. Please open an issue on Github."
+            )
+        yield StateSetMetricFamily(
+            "connectbox_provisioning_status",
+            "Provisioning status description",
+            value={
+                state.value: state == enum_provisioning_status
+                for state in ProvisioningStatus
             },
         )
 
