@@ -4,7 +4,7 @@
 [![PyPI](https://img.shields.io/pypi/v/connectbox-prometheus.svg)](https://pypi.org/project/connectbox-prometheus/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-A [Prometheus](https://prometheus.io/) exporter for the modem connection status of UPC Connect Boxes (used by Unitymedia in Germany, Irish Virgin Media, Ziggo in the Netherlands, and probably several others).
+A [Prometheus](https://prometheus.io/) exporter for monitoring Compal CH7465LG cable modems. These are sold under the name "Connect Box" by Unitymedia in Germany, Ziggo in the Netherlands and UPC in Switzerland/Austria. Or as "Virgin Media Super Hub 3" by Virgin Media.
 
 Makes thorough use of [compal_CH7465LG_py](https://github.com/ties/compal_CH7465LG_py) by [@ties](https://github.com/ties/) (thanks!).
 
@@ -36,6 +36,7 @@ scrape_configs:
       - targets:
         - localhost:9705
 ```
+One scrape takes roughly 6 seconds.
 
 ## Exported Metrics
 | Metric name                                           | Description                                               |
@@ -58,3 +59,9 @@ scrape_configs:
 | `connectbox_upstream_timeouts_total`                  | Upstream channel timeout occurrences                      |
 | `connectbox_scrape_duration_seconds`                  | Connect Box exporter scrape duration                      |
 | `connectbox_scrape_success`                           | Connect Box exporter scrape success                       |
+
+## Grafana Dashboard
+
+The above metrics can be monitored nicely in [Grafana](https://github.com/grafana/grafana) using [this dashboard](https://grafana.com/grafana/dashboards/12078/):
+
+![Grafana Dashboard](docs/grafana_dashboard_screenshot.png)
