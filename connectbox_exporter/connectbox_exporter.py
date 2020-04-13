@@ -8,6 +8,7 @@ from compal import Compal
 from prometheus_client import CollectorRegistry, MetricsHandler
 from prometheus_client.core import GaugeMetricFamily
 from prometheus_client.exposition import _ThreadingSimpleServer
+from prometheus_client.metrics_core import CounterMetricFamily
 from requests import Timeout
 
 from connectbox_exporter.config import (
@@ -84,7 +85,7 @@ class ConnectBoxCollector(object):
         post_scrape_time = time.time()
         if successful_scrape:
             self.logger.debug("Scrape successful.")
-            yield GaugeMetricFamily(
+            yield CounterMetricFamily(
                 "connectbox_scrape_duration",
                 documentation="Connect Box exporter scrape duration",
                 unit="seconds",
@@ -92,7 +93,7 @@ class ConnectBoxCollector(object):
             )
 
         yield GaugeMetricFamily(
-            "connectbox_scrape_success",
+            "connectbox_up",
             documentation="Connect Box exporter scrape success",
             value=int(successful_scrape),
         )
