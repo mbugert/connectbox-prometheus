@@ -12,7 +12,7 @@ setup(
     version="0.2.0",
     author="Michael Bugert",
     author_email="git@mbugert.de",
-    description="Prometheus exporter for the connection status of UPC Connect Boxes",
+    description='Prometheus exporter for Compal CH7465LG cable modems, commonly sold as "Connect Box"',
     long_description=long_descr,
     long_description_content_type="text/markdown",
     url="https://github.com/mbugert/connectbox-prometheus",
