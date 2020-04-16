@@ -1,10 +1,9 @@
 import logging
-import sys
 import threading
 import time
 
 import click
-from compal import Compal
+import compal
 from prometheus_client import CollectorRegistry, MetricsHandler
 from prometheus_client.exposition import _ThreadingSimpleServer
 from prometheus_client.metrics_core import GaugeMetricFamily
@@ -18,6 +17,7 @@ from connectbox_exporter.config import (
     PORT,
     TIMEOUT_SECONDS,
 )
+from connectbox_exporter.logger import get_logger, VerboseLogger
 from connectbox_exporter.xml2metric import (
     CmStateExtractor,
     LanUserExtractor,
@@ -29,7 +29,7 @@ from connectbox_exporter.xml2metric import (
 
 class ConnectBoxCollector(object):
     def __init__(
-        self, logger: logging.Logger, ip_address: str, password: str, timeout: float
+        self, logger: VerboseLogger, ip_address: str, password: str, timeout: float
     ):
         self.logger = logger
         self.ip_address = ip_address
@@ -50,7 +50,7 @@ class ConnectBoxCollector(object):
         # attempt login
         try:
             self.logger.debug("Logging in at " + self.ip_address)
-            connectbox = Compal(
+            connectbox = compal.Compal(
                 self.ip_address, key=self.password, timeout=self.timeout
             )
             connectbox.login()
@@ -65,8 +65,12 @@ class ConnectBoxCollector(object):
                 for extractor in self.metric_extractors:
                     contents = []
                     for fun in extractor.functions:
-                        self.logger.debug(f"Querying fun=" + str(fun) + "...")
-                        contents.append(connectbox.xml_getter(fun, {}).content)
+                        self.logger.debug(f"Querying fun={fun}...")
+                        raw_xml = connectbox.xml_getter(fun, {}).content
+                        self.logger.verbose(
+                            f"Raw XML response for fun={fun}:\n{raw_xml.decode()}"
+                        )
+                        contents.append(raw_xml)
                     yield from extractor.extract(contents)
             except Exception as e:
                 # bail out on any error
@@ -100,22 +104,20 @@ class ConnectBoxCollector(object):
 
 @click.command()
 @click.argument("config_file", type=click.Path(exists=True, dir_okay=False))
-@click.option("-v", "--verbose", help="Print more log messages", is_flag=True)
+@click.option(
+    "-v",
+    "--verbose",
+    help="Log more messages. Multiple -v increase verbosity.",
+    count=True,
+)
 def main(config_file, verbose):
     """
     Launch the exporter using a YAML config file.
     """
-    # logging setup
-    log_level = logging.DEBUG if verbose else logging.INFO
-    logger = logging.getLogger("connectbox_exporter")
-    logger.setLevel(log_level)
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(log_level)
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+
+    # hush the logger from the compal library and use our own custom logger
+    compal.LOGGER.setLevel(logging.WARNING)
+    logger = get_logger(verbose)
 
     # load user and merge with defaults
     config = load_config(config_file)
