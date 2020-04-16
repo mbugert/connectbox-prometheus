@@ -339,7 +339,7 @@ class DeviceStatusExtractor(XmlMetricsExtractor):
         )
         uptime_seconds = uptime_timedelta.total_seconds()
 
-        yield CounterMetricFamily(
+        yield GaugeMetricFamily(
             "connectbox_uptime",
             "Device uptime in seconds",
             unit="seconds",
