@@ -1,9 +1,11 @@
 import logging
 import threading
 import time
+from typing import Dict
 
 import click
 import compal
+from lxml.etree import XMLSyntaxError
 from prometheus_client import CollectorRegistry, MetricsHandler
 from prometheus_client.exposition import _ThreadingSimpleServer
 from prometheus_client.metrics_core import GaugeMetricFamily
@@ -19,7 +21,7 @@ from connectbox_exporter.config import (
 )
 from connectbox_exporter.logger import get_logger, VerboseLogger
 from connectbox_exporter.xml2metric import (
-    CmStateExtractor,
+    TemperatureExtractor,
     LanUserExtractor,
     UpstreamStatusExtractor,
     DownstreamStatusExtractor,
@@ -37,17 +39,21 @@ class ConnectBoxCollector(object):
         self.timeout = timeout
         self.metric_extractors = [
             DeviceStatusExtractor(),
-            CmStateExtractor(),
+            TemperatureExtractor(),
             LanUserExtractor(),
             DownstreamStatusExtractor(),
             UpstreamStatusExtractor(),
         ]
 
     def collect(self):
-        successful_scrape = True
-        pre_scrape_time = time.time()
+        # Collect scrape duration and scrape success for each extractor. Scrape success is initialized with False for
+        # all extractors so that we can report a value for each extractor even in cases where we abort midway through
+        # because we lost connection to the modem.
+        scrape_duration = {}  # type: Dict[str, float]
+        scrape_success = {e.name: False for e in self.metric_extractors}
 
         # attempt login
+        login_logout_success = True
         try:
             self.logger.debug("Logging in at " + self.ip_address)
             connectbox = compal.Compal(
@@ -57,49 +63,65 @@ class ConnectBoxCollector(object):
         except (ConnectionError, Timeout, ValueError) as e:
             self.logger.error(repr(e))
             connectbox = None
-            successful_scrape = False
+            login_logout_success = False
 
         # skip extracting further metrics if login failed
         if connectbox is not None:
-            try:
-                for extractor in self.metric_extractors:
-                    contents = {}
+            for extractor in self.metric_extractors:
+                try:
+                    pre_scrape_time = time.time()
+
+                    # obtain all raw XML responses for an extractor, then extract metrics
+                    raw_xmls = {}
                     for fun in extractor.functions:
                         self.logger.debug(f"Querying fun={fun}...")
                         raw_xml = connectbox.xml_getter(fun, {}).content
                         self.logger.verbose(
                             f"Raw XML response for fun={fun}:\n{raw_xml.decode()}"
                         )
-                        contents[fun] = raw_xml
-                    yield from extractor.extract(contents)
+                        raw_xmls[fun] = raw_xml
+                    yield from extractor.extract(raw_xmls)
+                    post_scrape_time = time.time()
+
+                    scrape_duration[extractor.name] = post_scrape_time - pre_scrape_time
+                    scrape_success[extractor.name] = True
+                except XMLSyntaxError as e:
+                    # in case of a less serious error, log and continue scraping the next extractor
+                    self.logger.error(repr(e))
+                except (ConnectionError, Timeout) as e:
+                    # in case of serious connection issues, abort and do not try the next extractor
+                    self.logger.error(repr(e))
+                    break
+
+            # attempt logout once done
+            try:
+                self.logger.debug("Logging out.")
+                connectbox.logout()
             except Exception as e:
-                # bail out on any error
                 self.logger.error(e)
-                successful_scrape = False
-            finally:
-                # attempt logout in case of errors
-                try:
-                    self.logger.debug("Logging out.")
-                    connectbox.logout()
-                except Exception as e:
-                    self.logger.error(e)
-                    successful_scrape = False
+                login_logout_success = False
+        scrape_success["login_logout"] = int(login_logout_success)
 
-        post_scrape_time = time.time()
-        if successful_scrape:
-            self.logger.debug("Scrape successful.")
-            yield GaugeMetricFamily(
-                "connectbox_scrape_duration",
-                documentation="Connect Box exporter scrape duration",
-                unit="seconds",
-                value=post_scrape_time - pre_scrape_time,
-            )
-
-        yield GaugeMetricFamily(
-            "connectbox_up",
-            documentation="Connect Box exporter scrape success",
-            value=int(successful_scrape),
+        # create metrics from previously durations and successes collected
+        EXTRACTOR = "extractor"
+        scrape_duration_metric = GaugeMetricFamily(
+            "connectbox_scrape_duration",
+            documentation="Scrape duration by extractor",
+            unit="seconds",
+            labels=[EXTRACTOR],
         )
+        for name, duration in scrape_duration.items():
+            scrape_duration_metric.add_metric([name], duration)
+        yield scrape_duration_metric
+
+        scrape_success_metric = GaugeMetricFamily(
+            "connectbox_up",
+            documentation="Connect Box exporter scrape success by extractor",
+            labels=[EXTRACTOR],
+        )
+        for name, success in scrape_success.items():
+            scrape_success_metric.add_metric([name], int(success))
+        yield scrape_success_metric
 
 
 @click.command()

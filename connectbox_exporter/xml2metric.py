@@ -20,8 +20,10 @@ class XmlMetricsExtractor:
     PROJECT_ROOT = Path(__file__).parent.parent
     SCHEMA_ROOT = PROJECT_ROOT / "resources" / "schema"
 
-    def __init__(self, functions: Set[int]):
-        # create one parser per function, use schema if available
+    def __init__(self, name: str, functions: Set[int]):
+        self._name = name
+
+        # create one parser per function, use an XML schema if available
         self._parsers = {}
         for fun in functions:
             path = XmlMetricsExtractor.SCHEMA_ROOT / f"{fun}.xsd"
@@ -31,6 +33,14 @@ class XmlMetricsExtractor:
                 schema = None
             parser = etree.XMLParser(schema=schema)
             self._parsers[fun] = parser
+
+    @property
+    def name(self):
+        """
+        Descriptive name for this extractor, to be used in metric labels
+        :return:
+        """
+        return self._name
 
     @property
     def functions(self) -> Iterable[int]:
@@ -44,7 +54,8 @@ class XmlMetricsExtractor:
         """
         Returns metrics given raw XML responses corresponding to the functions returned in the `functions` property.
         :param raw_xmls:
-        :return:
+        :return: metrics iterable
+        :raises: lxml.etree.XMLSyntaxError in case a raw XML does not match the expected schema
         """
         raise NotImplementedError
 
@@ -52,7 +63,7 @@ class XmlMetricsExtractor:
 class DownstreamStatusExtractor(XmlMetricsExtractor):
     def __init__(self):
         super(DownstreamStatusExtractor, self).__init__(
-            {GET.DOWNSTREAM_TABLE, GET.SIGNAL_TABLE}
+            "downstream", {GET.DOWNSTREAM_TABLE, GET.SIGNAL_TABLE}
         )
 
     def extract(self, raw_xmls: Dict[int, bytes]) -> Iterable[Metric]:
@@ -62,7 +73,6 @@ class DownstreamStatusExtractor(XmlMetricsExtractor):
         root = etree.fromstring(
             raw_xmls[GET.DOWNSTREAM_TABLE], parser=self._parsers[GET.DOWNSTREAM_TABLE]
         )
-        assert root.tag == "downstream_table"
 
         CHANNEL_ID = "channel_id"
         ds_frequency = GaugeMetricFamily(
@@ -107,7 +117,6 @@ class DownstreamStatusExtractor(XmlMetricsExtractor):
         root = etree.fromstring(
             raw_xmls[GET.SIGNAL_TABLE], parser=self._parsers[GET.SIGNAL_TABLE]
         )
-        assert root.tag == "signal_table"
 
         ds_unerrored_codewords = CounterMetricFamily(
             "connectbox_downstream_codewords_unerrored",
@@ -143,7 +152,7 @@ class DownstreamStatusExtractor(XmlMetricsExtractor):
 
 class UpstreamStatusExtractor(XmlMetricsExtractor):
     def __init__(self):
-        super(UpstreamStatusExtractor, self).__init__({GET.UPSTREAM_TABLE})
+        super(UpstreamStatusExtractor, self).__init__("upstream", {GET.UPSTREAM_TABLE})
 
     def extract(self, raw_xmls: Dict[int, bytes]) -> Iterable[Metric]:
         assert len(raw_xmls) == 1
@@ -177,7 +186,6 @@ class UpstreamStatusExtractor(XmlMetricsExtractor):
         root = etree.fromstring(
             raw_xmls[GET.UPSTREAM_TABLE], parser=self._parsers[GET.UPSTREAM_TABLE]
         )
-        assert root.tag == "upstream_table"
         for channel in root.findall("upstream"):
             channel_id = channel.find("usid").text
 
@@ -202,10 +210,14 @@ class UpstreamStatusExtractor(XmlMetricsExtractor):
 
 class LanUserExtractor(XmlMetricsExtractor):
     def __init__(self):
-        super(LanUserExtractor, self).__init__({GET.LANUSERTABLE})
+        super(LanUserExtractor, self).__init__("lan_users", {GET.LANUSERTABLE})
 
     def extract(self, raw_xmls: Dict[int, bytes]) -> Iterable[Metric]:
         assert len(raw_xmls) == 1
+
+        root = etree.fromstring(
+            raw_xmls[GET.LANUSERTABLE], parser=self._parsers[GET.LANUSERTABLE]
+        )
 
         MAC_ADDRESS = "mac_address"
         HOSTNAME = "hostname"
@@ -217,10 +229,6 @@ class LanUserExtractor(XmlMetricsExtractor):
             labels=[MAC_ADDRESS, IPV4_ADDRESS, IPV6_ADDRESS, HOSTNAME],
             unit="mbit",
         )
-        root = etree.fromstring(
-            raw_xmls[GET.LANUSERTABLE], parser=self._parsers[GET.LANUSERTABLE]
-        )
-        assert root.tag == "LanUserTable"
 
         for client in root.find("Ethernet").findall("clientinfo"):
             mac_address = client.find("MACAddr").text
@@ -246,9 +254,9 @@ class LanUserExtractor(XmlMetricsExtractor):
         yield lan_user_speed
 
 
-class CmStateExtractor(XmlMetricsExtractor):
+class TemperatureExtractor(XmlMetricsExtractor):
     def __init__(self):
-        super(CmStateExtractor, self).__init__({GET.CMSTATE})
+        super(TemperatureExtractor, self).__init__("temperature", {GET.CMSTATE})
 
     def extract(self, raw_xmls: Dict[int, bytes]) -> Iterable[Metric]:
         assert len(raw_xmls) == 1
@@ -256,7 +264,6 @@ class CmStateExtractor(XmlMetricsExtractor):
         root = etree.fromstring(
             raw_xmls[GET.CMSTATE], parser=self._parsers[GET.CMSTATE]
         )
-        assert root.tag == "cmstate"
 
         fahrenheit_to_celsius = lambda f: (f - 32) * 5.0 / 9
         tuner_temperature = fahrenheit_to_celsius(
@@ -285,7 +292,7 @@ class ProvisioningStatus(Enum):
 class DeviceStatusExtractor(XmlMetricsExtractor):
     def __init__(self):
         super(DeviceStatusExtractor, self).__init__(
-            {GET.GLOBALSETTINGS, GET.CM_SYSTEM_INFO, GET.CMSTATUS}
+            "device_status", {GET.GLOBALSETTINGS, GET.CM_SYSTEM_INFO, GET.CMSTATUS}
         )
 
     def extract(self, raw_xmls: Dict[int, bytes]) -> Iterable[Metric]:
@@ -295,7 +302,6 @@ class DeviceStatusExtractor(XmlMetricsExtractor):
         root = etree.fromstring(
             raw_xmls[GET.GLOBALSETTINGS], parser=self._parsers[GET.GLOBALSETTINGS]
         )
-        assert root.tag == "GlobalSettings"
         firmware_version = root.find("SwVersion").text
         cm_provision_mode = root.find("CmProvisionMode").text
         gw_provision_mode = root.find("GwProvisionMode").text
@@ -305,7 +311,6 @@ class DeviceStatusExtractor(XmlMetricsExtractor):
         root = etree.fromstring(
             raw_xmls[GET.CM_SYSTEM_INFO], parser=self._parsers[GET.CM_SYSTEM_INFO]
         )
-        assert root.tag == "cm_system_info"
         docsis_mode = root.find("cm_docsis_mode").text
         hardware_version = root.find("cm_hardware_version").text
         uptime_as_str = root.find("cm_system_uptime").text
@@ -314,7 +319,6 @@ class DeviceStatusExtractor(XmlMetricsExtractor):
         root = etree.fromstring(
             raw_xmls[GET.CMSTATUS], parser=self._parsers[GET.CMSTATUS]
         )
-        assert root.tag == "cmstatus"
         cable_modem_status = root.find("cm_comment").text
         provisioning_status = root.find("provisioning_st").text
 
