@@ -64,7 +64,7 @@ One scrape takes roughly 6 seconds.
 
 The above metrics can be monitored nicely in [Grafana](https://github.com/grafana/grafana) using [this dashboard](https://grafana.com/grafana/dashboards/12078/):
 
-![Grafana Dashboard](docs/grafana_dashboard_screenshot.png)
+![Grafana Dashboard](resources/docs/grafana_dashboard_screenshot.png)
 
 ## Contributing / Development
 Pull requests are welcome. 😊
@@ -72,4 +72,4 @@ In particular, metrics on connected Wifi devices are unchartered territory since
 
 To install development dependencies, run:
 
-`pip install -r requirements/development.txt`
+`pip install -r resources/requirements/development.txt`
