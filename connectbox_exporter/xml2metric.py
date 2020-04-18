@@ -241,21 +241,21 @@ class LanUserExtractor(XmlMetricsExtractor):
 
         label_names = ["mac_address", "ipv4_address", "ipv6_address", "hostname"]
 
-        # set up LAN user speed metric
-        lan_user_speed = GaugeMetricFamily(
-            "connectbox_lan_user_speed",
-            "LAN user network speed",
+        # set up ethernet user speed metric
+        ethernet_user_speed = GaugeMetricFamily(
+            "connectbox_ethernet_client_speed",
+            "Ethernet client network speed",
             labels=label_names,
             unit="mbit",
         )
         for client in root.find("Ethernet").findall("clientinfo"):
-            extract_client(client, lan_user_speed)
-        yield lan_user_speed
+            extract_client(client, ethernet_user_speed)
+        yield ethernet_user_speed
 
         # set up Wi-Fi user speed metric
         wifi_user_speed = GaugeMetricFamily(
-            "connectbox_wifi_user_speed",
-            "Wi-Fi user network speed",
+            "connectbox_wifi_client_speed",
+            "Wi-Fi client network speed",
             labels=label_names,
             unit="mbit",
         )
