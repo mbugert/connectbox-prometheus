@@ -219,18 +219,8 @@ class LanUserExtractor(XmlMetricsExtractor):
             raw_xmls[GET.LANUSERTABLE], parser=self._parsers[GET.LANUSERTABLE]
         )
 
-        MAC_ADDRESS = "mac_address"
-        HOSTNAME = "hostname"
-        IPV4_ADDRESS = "ipv4_address"
-        IPV6_ADDRESS = "ipv6_address"
-        lan_user_speed = GaugeMetricFamily(
-            "connectbox_lan_user_speed",
-            "LAN user network speed",
-            labels=[MAC_ADDRESS, IPV4_ADDRESS, IPV6_ADDRESS, HOSTNAME],
-            unit="mbit",
-        )
-
-        for client in root.find("Ethernet").findall("clientinfo"):
+        # LAN and Wi-Fi clients have the same XML format so we can reuse the code to extract their values
+        def extract_client(client, target_metric: GaugeMetricFamily):
             mac_address = client.find("MACAddr").text
 
             # depending on the firmware, both IPv4/IPv6 addresses or only one of both are reported
@@ -245,13 +235,33 @@ class LanUserExtractor(XmlMetricsExtractor):
 
             hostname = client.find("hostname").text
             speed = int(client.find("speed").text)
-            lan_user_speed.add_metric(
+            target_metric.add_metric(
                 [mac_address, ipv4_address, ipv6_address, hostname], speed
             )
 
-        # TODO there could be more things to be reported about wifi devices here
+        label_names = ["mac_address", "hostname", "ipv4_address", "ipv6_address"]
 
+        # set up LAN user speed metric
+        lan_user_speed = GaugeMetricFamily(
+            "connectbox_lan_user_speed",
+            "LAN user network speed",
+            labels=label_names,
+            unit="mbit",
+        )
+        for client in root.find("Ethernet").findall("clientinfo"):
+            extract_client(client, lan_user_speed)
         yield lan_user_speed
+
+        # set up Wi-Fi user speed metric
+        wifi_user_speed = GaugeMetricFamily(
+            "connectbox_wifi_user_speed",
+            "Wi-Fi user network speed",
+            labels=label_names,
+            unit="mbit",
+        )
+        for client in root.find("WIFI").findall("clientinfo"):
+            extract_client(client, wifi_user_speed)
+        yield wifi_user_speed
 
 
 class TemperatureExtractor(XmlMetricsExtractor):
