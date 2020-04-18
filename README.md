@@ -42,10 +42,12 @@ One scrape takes roughly 6 seconds.
 | Metric name                                           | Description                                               |
 |:------------------------------------------------------|:----------------------------------------------------------|
 | `connectbox_device_info`                              | Assorted device information                               |
-| `connectbox_uptime_seconds_total`                     | Device uptime in seconds                                  |
+| `connectbox_provisioning_status`                      | Modem provisioning status                                 |
+| `connectbox_uptime_seconds`                           | Device uptime in seconds                                  |
 | `connectbox_tuner_temperature_celsius`                | Tuner temperature                                         |
 | `connectbox_temperature_celsius`                      | Temperature                                               |
-| `connectbox_lan_user_speed_mbit`                      | LAN user network speed                                    |
+| `connectbox_ethernet_client_speed_mbit`               | Maximum speed of connected ethernet clients               |
+| `connectbox_wifi_client_speed_mbit`                   | Maximum speed of connected Wi-Fi clients                  |
 | `connectbox_downstream_frequency_hz`                  | Downstream channel frequency                              |
 | `connectbox_downstream_power_level_dbmv`              | Downstream channel power level                            |
 | `connectbox_downstream_snr_db`                        | Downstream channel signal-to-noise ratio (SNR)            |
@@ -58,7 +60,7 @@ One scrape takes roughly 6 seconds.
 | `connectbox_upstream_symbol_rate_ksps`                | Upstream channel symbol rate                              |
 | `connectbox_upstream_timeouts_total`                  | Upstream channel timeout occurrences                      |
 | `connectbox_scrape_duration_seconds`                  | Connect Box exporter scrape duration                      |
-| `connectbox_scrape_success`                           | Connect Box exporter scrape success                       |
+| `connectbox_up`                                       | Connect Box exporter scrape success                       |
 
 ## Grafana Dashboard
 
@@ -68,7 +70,6 @@ The above metrics can be monitored nicely in [Grafana](https://github.com/grafan
 
 ## Contributing / Development
 Pull requests are welcome. 😊
-In particular, metrics on connected Wifi devices are unchartered territory since I'm not using the Wifi functionality of my device. 
 
 To install development dependencies, run:
 
