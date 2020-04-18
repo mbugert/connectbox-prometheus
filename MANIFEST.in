@@ -1,2 +1,2 @@
-include LICENSE
 include config.yml
+graft resources/schema

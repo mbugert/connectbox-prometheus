@@ -4,12 +4,18 @@ from setuptools import find_packages, setup
 with open("README.md", "rb") as f:
     long_descr = f.read().decode("utf-8")
 
-with (Path("requirements") / "production.txt").open() as f:
+
+RESOURCES_ROOT = Path(__file__).parent / "resources"
+REQUIREMENTS_ROOT = RESOURCES_ROOT / "requirements"
+PRODUCTION_REQUIREMENTS = REQUIREMENTS_ROOT / "production.txt"
+print(PRODUCTION_REQUIREMENTS)
+
+with PRODUCTION_REQUIREMENTS.open() as f:
     install_requires = [s.strip() for s in f.readlines()]
 
 setup(
     name="connectbox-prometheus",
-    version="0.2.1",
+    version="0.2.2",
     author="Michael Bugert",
     author_email="git@mbugert.de",
     description='Prometheus exporter for Compal CH7465LG cable modems, commonly sold as "Connect Box"',
@@ -21,9 +27,9 @@ setup(
             "connectbox_exporter = connectbox_exporter.connectbox_exporter:main"
         ]
     },
+    include_package_data=True,
     packages=find_packages(exclude=["tests"]),
     install_requires=install_requires,
-    include_package_data=True,
     python_requires=">=3.7",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
