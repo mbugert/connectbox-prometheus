@@ -239,7 +239,7 @@ class LanUserExtractor(XmlMetricsExtractor):
                 [mac_address, ipv4_address, ipv6_address, hostname], speed
             )
 
-        label_names = ["mac_address", "hostname", "ipv4_address", "ipv6_address"]
+        label_names = ["mac_address", "ipv4_address", "ipv6_address", "hostname"]
 
         # set up LAN user speed metric
         lan_user_speed = GaugeMetricFamily(
