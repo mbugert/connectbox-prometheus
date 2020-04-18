@@ -1,0 +1,55 @@
+<!-- Schema for LanUserTable, fun=123 -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="Customer" type="xs:string"/>
+  <xs:element name="hostname" type="xs:string"/>
+  <xs:element name="index" type="xs:integer"/>
+  <xs:element name="interface" type="xs:string"/>
+  <xs:element name="interfaceid" type="xs:integer"/>
+  <xs:element name="IPv4Addr" type="xs:string"/>
+  <xs:element name="IPv6Addr" type="xs:string"/>
+  <xs:element name="leaseTime" type="xs:string"/>
+  <xs:element name="MACAddr" type="xs:string"/>
+  <xs:element name="method" type="xs:integer"/>
+  <xs:element name="speed" type="xs:decimal"/>
+  <xs:element name="totalClient" type="xs:integer"/>
+  <xs:element name="clientinfo">
+    <xs:complexType>
+      <xs:all>
+        <xs:element ref="interface"/>
+        <xs:element ref="IPv4Addr" minOccurs="0" maxOccurs="1"/>
+        <xs:element ref="IPv6Addr" minOccurs="0" maxOccurs="1"/>
+        <xs:element ref="index"/>
+        <xs:element ref="interfaceid"/>
+        <xs:element ref="hostname"/>
+        <xs:element ref="MACAddr"/>
+        <xs:element ref="method"/>
+        <xs:element ref="leaseTime"/>
+        <xs:element ref="speed"/>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="Ethernet">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="clientinfo" maxOccurs="unbounded" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="WIFI">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="clientinfo" maxOccurs="unbounded" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="LanUserTable">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="Ethernet"/>
+        <xs:element ref="WIFI"/>
+        <xs:element ref="totalClient"/>
+        <xs:element ref="Customer"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

@@ -55,7 +55,7 @@ class ConnectBoxCollector(object):
             )
             connectbox.login()
         except (ConnectionError, Timeout, ValueError) as e:
-            self.logger.error(e)
+            self.logger.error(repr(e))
             connectbox = None
             successful_scrape = False
 
@@ -63,14 +63,14 @@ class ConnectBoxCollector(object):
         if connectbox is not None:
             try:
                 for extractor in self.metric_extractors:
-                    contents = []
+                    contents = {}
                     for fun in extractor.functions:
                         self.logger.debug(f"Querying fun={fun}...")
                         raw_xml = connectbox.xml_getter(fun, {}).content
                         self.logger.verbose(
                             f"Raw XML response for fun={fun}:\n{raw_xml.decode()}"
                         )
-                        contents.append(raw_xml)
+                        contents[fun] = raw_xml
                     yield from extractor.extract(contents)
             except Exception as e:
                 # bail out on any error
