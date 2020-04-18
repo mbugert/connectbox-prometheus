@@ -85,7 +85,7 @@ class ConnectBoxCollector(object):
 
                     scrape_duration[extractor.name] = post_scrape_time - pre_scrape_time
                     scrape_success[extractor.name] = True
-                except XMLSyntaxError as e:
+                except (XMLSyntaxError, AttributeError) as e:
                     # in case of a less serious error, log and continue scraping the next extractor
                     self.logger.error(repr(e))
                 except (ConnectionError, Timeout) as e:
