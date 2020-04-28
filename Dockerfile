@@ -7,11 +7,16 @@ RUN apk add --no-cache --virtual .build-deps \
         libxml2-dev \
     && apk add \
         libxslt-dev \
-        su-exec \
-    && pip3 --no-cache-dir install connectbox-prometheus \
+        su-exec
+
+WORKDIR /opt/connectbox-prometheus
+COPY resources/requirements/production.txt requirements.txt
+RUN pip3 --no-cache-dir install -r requirements.txt \
     && apk del .build-deps
 
-COPY docker-run.sh config.yml /opt/connectbox-prometheus/
+COPY . .
+RUN python3 setup.py install
+
 VOLUME /data
 EXPOSE 9705
 

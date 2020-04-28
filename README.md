@@ -11,8 +11,39 @@ Makes thorough use of [compal_CH7465LG_py](https://github.com/ties/compal_CH7465
 ## Installation
 On your Prometheus server host:
 
+### Using pip
 1. [Create a virtual environment](https://packaging.python.org/tutorials/installing-packages/#creating-virtual-environments) using python3.7 or higher
 2. Install the exporter via `pip install connectbox-prometheus`
+
+### Using Docker
+Alternatively you could use the provided `Dockerfile`.
+We don't provide builds on [Docker Hub](https://hub.docker.com/) or similar, so you need to `git clone` and build it yourself:
+
+`git clone https://github.com/mbugert/connectbox-prometheus.git`
+
+`cd connectbox-prometheus`
+
+Choose **either** `docker run` **or** `docker-compose`.
+
+#### docker run
+
+To build your own local docker image run
+`docker build -t connectbox-prometheus .`
+
+To actually create and run a container named `connectbox-prometheus` use the following command:
+
+`docker run -v connectbox-prometheus-volume:/data -p 9705:9705 --name connectbox-prometheus connectbox-prometheus`
+
+The example `config.yml` found in the root of this repo will be copied to the provided `/data` volume (e.g. `connectbox-prometheus-volume`, usually found under `/var/lib/docker/volumes/connectbox-prometheus-volume` and the container will stop, because you most likely need to modify the given config. See [Usage](#usage).
+
+After modifying, run `docker start connectbox-prometheus` to keep the container running.
+
+#### docker-compose
+
+`docker-compose up` will automatically build the docker image, start the container the first time to copy the example `config.yml` and exit again.
+Now there should be an directory named `data` where you can find your `config.yml`. Modify it to your needs. See [Usage](#usage).
+
+After modifying, run `docker-compose up -d` to keep the container running.
 
 ## Usage
 This exporter queries exactly one Connect Box as a remote target.
