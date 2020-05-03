@@ -1,0 +1,13 @@
+# ignore everything by default
+**
+
+# add exeptions for files we actually need in the docker image
+!resources/requirements/production.txt
+!config.yml
+!connectbox_exporter/**
+!run.py
+!setup.py
+!docker-run.sh
+
+# we need README.md so setup.py does not fail
+!README.md

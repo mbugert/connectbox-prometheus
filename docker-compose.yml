@@ -1,0 +1,9 @@
+version: "3.7"
+services:
+  connectbox-prometheus:
+    build:
+      context: .
+    volumes:
+      - ./data:/data
+    ports:
+      - 9705:9705
