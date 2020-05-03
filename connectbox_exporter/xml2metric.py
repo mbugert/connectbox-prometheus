@@ -403,7 +403,7 @@ def get_metrics_extractor(ident: str):
     }
     if not ident in extractors.keys():
         raise ValueError(
-            f"Unknown extractor '{ident}', supported are: {','.join(extractors.keys())}"
+            f"Unknown extractor '{ident}', supported are: {', '.join(extractors.keys())}"
         )
     cls = extractors[ident]
     return cls()

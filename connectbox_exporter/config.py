@@ -54,7 +54,9 @@ def load_config(config_file: Union[str, Path]) -> Dict:
         raise ValueError(f"Invalid exporter port.")
 
     if not config[EXPORTER][EXTRACTORS]:
-        raise ValueError("At least one family of metrics needs to be specified.")
+        raise ValueError(
+            "The config file needs to specify at least one family of metrics."
+        )
     config[EXPORTER][EXTRACTORS] = sorted(set(config[EXPORTER][EXTRACTORS]))
 
     return config
