@@ -2,6 +2,7 @@ import logging
 import threading
 import time
 from typing import Dict
+import json
 
 import click
 import compal
@@ -63,11 +64,11 @@ class ConnectBoxCollector(object):
         # skip extracting further metrics if login failed
         if connectbox is not None:
             for extractor in self.metric_extractors:
+                raw_xmls = {}
                 try:
                     pre_scrape_time = time.time()
 
                     # obtain all raw XML responses for an extractor, then extract metrics
-                    raw_xmls = {}
                     for fun in extractor.functions:
                         self.logger.debug(f"Querying fun={fun}...")
                         raw_xml = connectbox.xml_getter(fun, {}).content
@@ -82,8 +83,9 @@ class ConnectBoxCollector(object):
                     scrape_success[extractor.name] = True
                 except (XMLSyntaxError, AttributeError) as e:
                     # in case of a less serious error, log and continue scraping the next extractor
-                    # TODO make this more useful: log in which extractor the error happened and print the xml at fault
-                    self.logger.error(repr(e))
+                    jsonized = json.dumps(raw_xmls)
+                    message = f"Failed to extract '{extractor.name}'. Please open an issue on Github and include the following:\n{repr(e)}\n{jsonized}"
+                    self.logger.error(message)
                 except (ConnectionError, Timeout) as e:
                     # in case of serious connection issues, abort and do not try the next extractor
                     self.logger.error(repr(e))
