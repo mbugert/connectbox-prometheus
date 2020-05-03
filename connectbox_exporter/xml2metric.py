@@ -14,6 +14,12 @@ from prometheus_client.metrics_core import (
     StateSetMetricFamily,
 )
 
+DEVICE_STATUS = "device_status"
+DOWNSTREAM = "downstream"
+UPSTREAM = "upstream"
+LAN_USERS = "lan_users"
+TEMPERATURE = "temperature"
+
 
 class XmlMetricsExtractor:
 
@@ -63,7 +69,7 @@ class XmlMetricsExtractor:
 class DownstreamStatusExtractor(XmlMetricsExtractor):
     def __init__(self):
         super(DownstreamStatusExtractor, self).__init__(
-            "downstream", {GET.DOWNSTREAM_TABLE, GET.SIGNAL_TABLE}
+            DOWNSTREAM, {GET.DOWNSTREAM_TABLE, GET.SIGNAL_TABLE}
         )
 
     def extract(self, raw_xmls: Dict[int, bytes]) -> Iterable[Metric]:
@@ -152,7 +158,7 @@ class DownstreamStatusExtractor(XmlMetricsExtractor):
 
 class UpstreamStatusExtractor(XmlMetricsExtractor):
     def __init__(self):
-        super(UpstreamStatusExtractor, self).__init__("upstream", {GET.UPSTREAM_TABLE})
+        super(UpstreamStatusExtractor, self).__init__(UPSTREAM, {GET.UPSTREAM_TABLE})
 
     def extract(self, raw_xmls: Dict[int, bytes]) -> Iterable[Metric]:
         assert len(raw_xmls) == 1
@@ -210,7 +216,7 @@ class UpstreamStatusExtractor(XmlMetricsExtractor):
 
 class LanUserExtractor(XmlMetricsExtractor):
     def __init__(self):
-        super(LanUserExtractor, self).__init__("lan_users", {GET.LANUSERTABLE})
+        super(LanUserExtractor, self).__init__(LAN_USERS, {GET.LANUSERTABLE})
 
     def extract(self, raw_xmls: Dict[int, bytes]) -> Iterable[Metric]:
         assert len(raw_xmls) == 1
@@ -266,7 +272,7 @@ class LanUserExtractor(XmlMetricsExtractor):
 
 class TemperatureExtractor(XmlMetricsExtractor):
     def __init__(self):
-        super(TemperatureExtractor, self).__init__("temperature", {GET.CMSTATE})
+        super(TemperatureExtractor, self).__init__(TEMPERATURE, {GET.CMSTATE})
 
     def extract(self, raw_xmls: Dict[int, bytes]) -> Iterable[Metric]:
         assert len(raw_xmls) == 1
@@ -302,7 +308,7 @@ class ProvisioningStatus(Enum):
 class DeviceStatusExtractor(XmlMetricsExtractor):
     def __init__(self):
         super(DeviceStatusExtractor, self).__init__(
-            "device_status", {GET.GLOBALSETTINGS, GET.CM_SYSTEM_INFO, GET.CMSTATUS}
+            DEVICE_STATUS, {GET.GLOBALSETTINGS, GET.CM_SYSTEM_INFO, GET.CMSTATUS}
         )
 
     def extract(self, raw_xmls: Dict[int, bytes]) -> Iterable[Metric]:
@@ -380,3 +386,24 @@ class DeviceStatusExtractor(XmlMetricsExtractor):
             unit="seconds",
             value=uptime_seconds,
         )
+
+
+def get_metrics_extractor(ident: str):
+    """
+    Factory method for metrics extractors.
+    :param ident: metric extractor identifier
+    :return: extractor instance
+    """
+    extractors = {
+        DEVICE_STATUS: DeviceStatusExtractor,
+        DOWNSTREAM: DownstreamStatusExtractor,
+        UPSTREAM: UpstreamStatusExtractor,
+        LAN_USERS: LanUserExtractor,
+        TEMPERATURE: TemperatureExtractor,
+    }
+    if not ident in extractors.keys():
+        raise ValueError(
+            f"Unknown extractor '{ident}', supported are: {','.join(extractors.keys())}"
+        )
+    cls = extractors[ident]
+    return cls()

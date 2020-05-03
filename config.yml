@@ -4,10 +4,13 @@ ip_address: 192.168.0.1
 # Connect Box web interface password
 password: WhatEverYourPasswordIs
 
-# The following parameters are optional:
+# All following parameters are optional.
 #exporter:
   # port on which this exporter exposes metrics (default: 9705)
   #port: 9705
 
   # timeout duration for connections to the Connect Box (default: 9)
   #timeout_seconds: 9
+
+  # Customize the family of metrics to scrape. By default, all metrics are scraped.
+  #metrics: [device_status, downstream, upstream, lan_users, temperature]

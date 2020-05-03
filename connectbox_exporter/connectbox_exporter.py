@@ -18,32 +18,27 @@ from connectbox_exporter.config import (
     EXPORTER,
     PORT,
     TIMEOUT_SECONDS,
+    EXTRACTORS,
 )
 from connectbox_exporter.logger import get_logger, VerboseLogger
-from connectbox_exporter.xml2metric import (
-    TemperatureExtractor,
-    LanUserExtractor,
-    UpstreamStatusExtractor,
-    DownstreamStatusExtractor,
-    DeviceStatusExtractor,
-)
+from connectbox_exporter.xml2metric import get_metrics_extractor
 
 
 class ConnectBoxCollector(object):
     def __init__(
-        self, logger: VerboseLogger, ip_address: str, password: str, timeout: float
+        self,
+        logger: VerboseLogger,
+        ip_address: str,
+        password: str,
+        exporter_config: Dict,
     ):
         self.logger = logger
         self.ip_address = ip_address
         self.password = password
-        self.timeout = timeout
-        self.metric_extractors = [
-            DeviceStatusExtractor(),
-            TemperatureExtractor(),
-            LanUserExtractor(),
-            DownstreamStatusExtractor(),
-            UpstreamStatusExtractor(),
-        ]
+        self.timeout = exporter_config[TIMEOUT_SECONDS]
+
+        extractors = exporter_config[EXTRACTORS]
+        self.metric_extractors = [get_metrics_extractor(e) for e in extractors]
 
     def collect(self):
         # Collect scrape duration and scrape success for each extractor. Scrape success is initialized with False for
@@ -87,6 +82,7 @@ class ConnectBoxCollector(object):
                     scrape_success[extractor.name] = True
                 except (XMLSyntaxError, AttributeError) as e:
                     # in case of a less serious error, log and continue scraping the next extractor
+                    # TODO make this more useful: log in which extractor the error happened and print the xml at fault
                     self.logger.error(repr(e))
                 except (ConnectionError, Timeout) as e:
                     # in case of serious connection issues, abort and do not try the next extractor
@@ -152,7 +148,7 @@ def main(config_file, verbose):
             logger,
             ip_address=config[IP_ADDRESS],
             password=config[PASSWORD],
-            timeout=exporter_config[TIMEOUT_SECONDS],
+            exporter_config=config[EXPORTER],
         )
     )
 
