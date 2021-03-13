@@ -20,7 +20,7 @@
 - [ ] Commit, merge into `master` with PR
 - [ ] Proper pypi release
     ```
-    twine upload dist/*
+    python -m twine upload dist/*
     ```
 - [ ] Release on github with appropriate tag
 
