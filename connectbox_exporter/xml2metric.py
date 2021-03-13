@@ -294,7 +294,10 @@ class TemperatureExtractor(XmlMetricsExtractor):
             value=tuner_temperature,
         )
         yield GaugeMetricFamily(
-            "connectbox_temperature", "Temperature", unit="celsius", value=temperature,
+            "connectbox_temperature",
+            "Temperature",
+            unit="celsius",
+            value=temperature,
         )
 
 
