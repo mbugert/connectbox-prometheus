@@ -8,14 +8,13 @@ with open("README.md", "rb") as f:
 RESOURCES_ROOT = Path(__file__).parent / "resources"
 REQUIREMENTS_ROOT = RESOURCES_ROOT / "requirements"
 PRODUCTION_REQUIREMENTS = REQUIREMENTS_ROOT / "production.txt"
-print(PRODUCTION_REQUIREMENTS)
 
 with PRODUCTION_REQUIREMENTS.open() as f:
     install_requires = [s.strip() for s in f.readlines()]
 
 setup(
     name="connectbox-prometheus",
-    version="0.2.6",
+    version="0.2.7",
     author="Michael Bugert",
     author_email="git@mbugert.de",
     description='Prometheus exporter for Compal CH7465LG cable modems, commonly sold as "Connect Box"',
@@ -37,6 +36,7 @@ setup(
         "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "Topic :: System :: Networking :: Monitoring",
     ],
 )
