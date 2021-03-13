@@ -294,7 +294,10 @@ class TemperatureExtractor(XmlMetricsExtractor):
             value=tuner_temperature,
         )
         yield GaugeMetricFamily(
-            "connectbox_temperature", "Temperature", unit="celsius", value=temperature,
+            "connectbox_temperature",
+            "Temperature",
+            unit="celsius",
+            value=temperature,
         )
 
 
@@ -303,6 +306,7 @@ class ProvisioningStatus(Enum):
     PARTIAL_SERVICE_US = "Partial Service (US only)"
     PARTIAL_SERVICE_DS = "Partial Service (DS only)"
     PARTIAL_SERVICE_USDS = "Partial Service (US+DS)"
+    MODEM_MODE = "Modem Mode"
 
 
 class DeviceStatusExtractor(XmlMetricsExtractor):

@@ -1,14 +1,15 @@
+import json
 import logging
 import threading
 import time
+from http.server import HTTPServer
+from socketserver import ThreadingMixIn
 from typing import Dict
-import json
 
 import click
 import compal
 from lxml.etree import XMLSyntaxError
 from prometheus_client import CollectorRegistry, MetricsHandler
-from prometheus_client.exposition import _ThreadingSimpleServer
 from prometheus_client.metrics_core import GaugeMetricFamily
 from requests import Timeout
 
@@ -23,6 +24,18 @@ from connectbox_exporter.config import (
 )
 from connectbox_exporter.logger import get_logger, VerboseLogger
 from connectbox_exporter.xml2metric import get_metrics_extractor
+
+
+# Taken 1:1 from prometheus-client==0.7.1, see https://github.com/prometheus/client_python/blob/3cb4c9247f3f08dfbe650b6bdf1f53aa5f6683c1/prometheus_client/exposition.py
+class _ThreadingSimpleServer(ThreadingMixIn, HTTPServer):
+    """Thread per request HTTP server."""
+
+    # Make worker threads "fire and forget". Beginning with Python 3.7 this
+    # prevents a memory leak because ``ThreadingMixIn`` starts to gather all
+    # non-daemon threads in a list in order to join on them at server close.
+    # Enabling daemon threads virtually makes ``_ThreadingSimpleServer`` the
+    # same as Python 3.7's ``ThreadingHTTPServer``.
+    daemon_threads = True
 
 
 class ConnectBoxCollector(object):
