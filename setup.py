@@ -14,7 +14,7 @@ with PRODUCTION_REQUIREMENTS.open() as f:
 
 setup(
     name="connectbox-prometheus",
-    version="0.2.7",
+    version="0.2.8",
     author="Michael Bugert",
     author_email="git@mbugert.de",
     description='Prometheus exporter for Compal CH7465LG cable modems, commonly sold as "Connect Box"',
