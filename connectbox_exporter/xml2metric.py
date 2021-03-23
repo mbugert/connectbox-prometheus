@@ -1,6 +1,7 @@
 import re
 from datetime import timedelta
 from enum import Enum
+from logging import Logger
 from pathlib import Path
 from typing import Iterable, Set, Dict
 
@@ -26,8 +27,9 @@ class XmlMetricsExtractor:
     PROJECT_ROOT = Path(__file__).parent.parent
     SCHEMA_ROOT = PROJECT_ROOT / "resources" / "schema"
 
-    def __init__(self, name: str, functions: Set[int]):
+    def __init__(self, name: str, functions: Set[int], logger: Logger):
         self._name = name
+        self._logger = logger
 
         # create one parser per function, use an XML schema if available
         self._parsers = {}
@@ -67,9 +69,9 @@ class XmlMetricsExtractor:
 
 
 class DownstreamStatusExtractor(XmlMetricsExtractor):
-    def __init__(self):
+    def __init__(self, logger: Logger):
         super(DownstreamStatusExtractor, self).__init__(
-            DOWNSTREAM, {GET.DOWNSTREAM_TABLE, GET.SIGNAL_TABLE}
+            DOWNSTREAM, {GET.DOWNSTREAM_TABLE, GET.SIGNAL_TABLE}, logger
         )
 
     def extract(self, raw_xmls: Dict[int, bytes]) -> Iterable[Metric]:
@@ -157,8 +159,8 @@ class DownstreamStatusExtractor(XmlMetricsExtractor):
 
 
 class UpstreamStatusExtractor(XmlMetricsExtractor):
-    def __init__(self):
-        super(UpstreamStatusExtractor, self).__init__(UPSTREAM, {GET.UPSTREAM_TABLE})
+    def __init__(self, logger: Logger):
+        super(UpstreamStatusExtractor, self).__init__(UPSTREAM, {GET.UPSTREAM_TABLE}, logger)
 
     def extract(self, raw_xmls: Dict[int, bytes]) -> Iterable[Metric]:
         assert len(raw_xmls) == 1
@@ -215,8 +217,8 @@ class UpstreamStatusExtractor(XmlMetricsExtractor):
 
 
 class LanUserExtractor(XmlMetricsExtractor):
-    def __init__(self):
-        super(LanUserExtractor, self).__init__(LAN_USERS, {GET.LANUSERTABLE})
+    def __init__(self, logger: Logger):
+        super(LanUserExtractor, self).__init__(LAN_USERS, {GET.LANUSERTABLE}, logger)
 
     def extract(self, raw_xmls: Dict[int, bytes]) -> Iterable[Metric]:
         assert len(raw_xmls) == 1
@@ -271,8 +273,8 @@ class LanUserExtractor(XmlMetricsExtractor):
 
 
 class TemperatureExtractor(XmlMetricsExtractor):
-    def __init__(self):
-        super(TemperatureExtractor, self).__init__(TEMPERATURE, {GET.CMSTATE})
+    def __init__(self, logger: Logger):
+        super(TemperatureExtractor, self).__init__(TEMPERATURE, {GET.CMSTATE}, logger)
 
     def extract(self, raw_xmls: Dict[int, bytes]) -> Iterable[Metric]:
         assert len(raw_xmls) == 1
@@ -307,12 +309,17 @@ class ProvisioningStatus(Enum):
     PARTIAL_SERVICE_DS = "Partial Service (DS only)"
     PARTIAL_SERVICE_USDS = "Partial Service (US+DS)"
     MODEM_MODE = "Modem Mode"
+    DS_SCANNING = "DS scanning"     # confirmed to exist
+    US_SCANNING = "US scanning"     # probably exists too
+
+    # default case for all future unknown provisioning status
+    UNKNOWN = "unknown"
 
 
 class DeviceStatusExtractor(XmlMetricsExtractor):
-    def __init__(self):
+    def __init__(self, logger: Logger):
         super(DeviceStatusExtractor, self).__init__(
-            DEVICE_STATUS, {GET.GLOBALSETTINGS, GET.CM_SYSTEM_INFO, GET.CMSTATUS}
+            DEVICE_STATUS, {GET.GLOBALSETTINGS, GET.CM_SYSTEM_INFO, GET.CMSTATUS}, logger
         )
 
     def extract(self, raw_xmls: Dict[int, bytes]) -> Iterable[Metric]:
@@ -326,6 +333,11 @@ class DeviceStatusExtractor(XmlMetricsExtractor):
         cm_provision_mode = root.find("CmProvisionMode").text
         gw_provision_mode = root.find("GwProvisionMode").text
         operator_id = root.find("OperatorId").text
+
+        # `cm_provision_mode` is known to be None in case `provisioning_status` is "DS scanning". We need to set it to
+        # some string, otherwise the InfoMetricFamily call fails with AttributeError.
+        if cm_provision_mode is None:
+            cm_provision_mode = "Unknown"
 
         # parse cm_system_info
         root = etree.fromstring(
@@ -359,10 +371,10 @@ class DeviceStatusExtractor(XmlMetricsExtractor):
         # return an enum-style metric for the provisioning status
         try:
             enum_provisioning_status = ProvisioningStatus(provisioning_status)
-        except:
-            raise ValueError(
-                f"Unknown provisioning status '{provisioning_status}'. Please open an issue on Github."
-            )
+        except ValueError:
+            self._logger.warning(f"Unknown provisioning status '{provisioning_status}'. Please open an issue on Github.")
+            enum_provisioning_status = ProvisioningStatus.UNKNOWN
+
         yield StateSetMetricFamily(
             "connectbox_provisioning_status",
             "Provisioning status description",
@@ -375,14 +387,12 @@ class DeviceStatusExtractor(XmlMetricsExtractor):
         # uptime is reported in a format like "36day(s)15h:24m:58s" which needs parsing
         uptime_pattern = r"(\d+)day\(s\)(\d+)h:(\d+)m:(\d+)s"
         m = re.fullmatch(uptime_pattern, uptime_as_str)
-        if m is None:
-            raise ValueError(
-                f"Unexpected duration format '{uptime_as_str}', please open an issue on github."
-            )
-        uptime_timedelta = timedelta(
-            days=int(m[1]), hours=int(m[2]), minutes=int(m[3]), seconds=int(m[4])
-        )
-        uptime_seconds = uptime_timedelta.total_seconds()
+        if m is not None:
+            uptime_timedelta = timedelta(days=int(m[1]), hours=int(m[2]), minutes=int(m[3]), seconds=int(m[4]))
+            uptime_seconds = uptime_timedelta.total_seconds()
+        else:
+            self._logger.warning(f"Unexpected duration format '{uptime_as_str}', please open an issue on github.")
+            uptime_seconds = -1
 
         yield GaugeMetricFamily(
             "connectbox_uptime",
@@ -392,10 +402,11 @@ class DeviceStatusExtractor(XmlMetricsExtractor):
         )
 
 
-def get_metrics_extractor(ident: str):
+def get_metrics_extractor(ident: str, logger: Logger):
     """
     Factory method for metrics extractors.
     :param ident: metric extractor identifier
+    :param logger: logging logger
     :return: extractor instance
     """
     extractors = {
@@ -410,4 +421,4 @@ def get_metrics_extractor(ident: str):
             f"Unknown extractor '{ident}', supported are: {', '.join(extractors.keys())}"
         )
     cls = extractors[ident]
-    return cls()
+    return cls(logger)

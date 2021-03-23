@@ -52,7 +52,7 @@ class ConnectBoxCollector(object):
         self.timeout = exporter_config[TIMEOUT_SECONDS]
 
         extractors = exporter_config[EXTRACTORS]
-        self.metric_extractors = [get_metrics_extractor(e) for e in extractors]
+        self.metric_extractors = [get_metrics_extractor(e, logger) for e in extractors]
 
     def collect(self):
         # Collect scrape duration and scrape success for each extractor. Scrape success is initialized with False for
