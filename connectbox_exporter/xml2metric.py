@@ -311,6 +311,9 @@ class ProvisioningStatus(Enum):
     MODEM_MODE = "Modem Mode"
     DS_SCANNING = "DS scanning"     # confirmed to exist
     US_SCANNING = "US scanning"     # probably exists too
+    US_RANGING = "US ranging"       # confirmed to exist
+    DS_RANGING = "DS scanning"      # probably exists too
+    REQUESTING_CM_IP_ADDRESS = "Requesting CM IP address"
 
     # default case for all future unknown provisioning status
     UNKNOWN = "unknown"
