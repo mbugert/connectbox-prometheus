@@ -17,13 +17,15 @@ On your Prometheus server host:
 
 ### Using Docker
 Alternatively you could use the provided `Dockerfile`.
-We don't provide builds on [Docker Hub](https://hub.docker.com/) or similar, so you need to `git clone` and build it yourself:
+Images can be built by cloning the repository with `git clone` and build building the image by running:
 
 `git clone https://github.com/mbugert/connectbox-prometheus.git`
 
 `cd connectbox-prometheus`
 
 Choose **either** `docker run` **or** `docker-compose`.
+
+While it is a good idea to build your own images, prebuilt images have been provided on [GitHub Container Repository](ghcr.io/mbugert/connectbox-prometheus).
 
 #### docker run
 
