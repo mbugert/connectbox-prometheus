@@ -3,7 +3,7 @@ from datetime import timedelta
 from enum import Enum
 from logging import Logger
 from pathlib import Path
-from typing import Iterable, Set, Dict
+from typing import Dict, Iterable, Optional, Set, TypeVar
 
 from compal.functions import GetFunction as GET
 from lxml import etree
@@ -15,11 +15,14 @@ from prometheus_client.metrics_core import (
     StateSetMetricFamily,
 )
 
+SOURCE = "source"
 DEVICE_STATUS = "device_status"
 DOWNSTREAM = "downstream"
 UPSTREAM = "upstream"
 LAN_USERS = "lan_users"
 TEMPERATURE = "temperature"
+
+Extractor = TypeVar("Extractor", bound="XmlMetricsExtractor")
 
 
 class XmlMetricsExtractor:
@@ -58,10 +61,13 @@ class XmlMetricsExtractor:
         """
         return self._parsers.keys()
 
-    def extract(self, raw_xmls: Dict[int, bytes]) -> Iterable[Metric]:
+    def extract(
+        self, raw_xmls: Dict[int, bytes], source: Optional[str] = None
+    ) -> Iterable[Metric]:
         """
         Returns metrics given raw XML responses corresponding to the functions returned in the `functions` property.
         :param raw_xmls:
+        :source: source of the raw xml
         :return: metrics iterable
         :raises: lxml.etree.XMLSyntaxError in case a raw XML does not match the expected schema
         """
@@ -74,7 +80,9 @@ class DownstreamStatusExtractor(XmlMetricsExtractor):
             DOWNSTREAM, {GET.DOWNSTREAM_TABLE, GET.SIGNAL_TABLE}, logger
         )
 
-    def extract(self, raw_xmls: Dict[int, bytes]) -> Iterable[Metric]:
+    def extract(
+        self, raw_xmls: Dict[int, bytes], source: Optional[str] = None
+    ) -> Iterable[Metric]:
         assert len(raw_xmls) == 2
 
         # DOWNSTREAM_TABLE gives us frequency, power level, SNR and RxMER per channel
@@ -87,25 +95,25 @@ class DownstreamStatusExtractor(XmlMetricsExtractor):
             "connectbox_downstream_frequency",
             "Downstream channel frequency",
             unit="hz",
-            labels=[CHANNEL_ID],
+            labels=[SOURCE, CHANNEL_ID],
         )
         ds_power_level = GaugeMetricFamily(
             "connectbox_downstream_power_level",
             "Downstream channel power level",
             unit="dbmv",
-            labels=[CHANNEL_ID],
+            labels=[SOURCE, CHANNEL_ID],
         )
         ds_snr = GaugeMetricFamily(
             "connectbox_downstream_snr",
             "Downstream channel signal-to-noise ratio (SNR)",
             unit="db",
-            labels=[CHANNEL_ID],
+            labels=[SOURCE, CHANNEL_ID],
         )
         ds_rxmer = GaugeMetricFamily(
             "connectbox_downstream_rxmer",
             "Downstream channel receive modulation error ratio (RxMER)",
             unit="db",
-            labels=[CHANNEL_ID],
+            labels=[SOURCE, CHANNEL_ID],
         )
         for channel in root.findall("downstream"):
             channel_id = channel.find("chid").text
@@ -114,7 +122,7 @@ class DownstreamStatusExtractor(XmlMetricsExtractor):
             snr = int(channel.find("snr").text)
             rxmer = float(channel.find("RxMER").text)
 
-            labels = [channel_id.zfill(2)]
+            labels = [source, channel_id.zfill(2)]
             ds_frequency.add_metric(labels, frequency)
             ds_power_level.add_metric(labels, power_level)
             ds_snr.add_metric(labels, snr)
@@ -129,17 +137,17 @@ class DownstreamStatusExtractor(XmlMetricsExtractor):
         ds_unerrored_codewords = CounterMetricFamily(
             "connectbox_downstream_codewords_unerrored",
             "Unerrored downstream codewords",
-            labels=[CHANNEL_ID],
+            labels=[SOURCE, CHANNEL_ID],
         )
         ds_correctable_codewords = CounterMetricFamily(
             "connectbox_downstream_codewords_corrected",
             "Corrected downstream codewords",
-            labels=[CHANNEL_ID],
+            labels=[SOURCE, CHANNEL_ID],
         )
         ds_uncorrectable_codewords = CounterMetricFamily(
             "connectbox_downstream_codewords_uncorrectable",
             "Uncorrectable downstream codewords",
-            labels=[CHANNEL_ID],
+            labels=[SOURCE, CHANNEL_ID],
         )
         for channel in root.findall("signal"):
             channel_id = channel.find("dsid").text
@@ -147,7 +155,7 @@ class DownstreamStatusExtractor(XmlMetricsExtractor):
             correctable = int(channel.find("correctable").text)
             uncorrectable = int(channel.find("uncorrectable").text)
 
-            labels = [channel_id.zfill(2)]
+            labels = [source, channel_id.zfill(2)]
             ds_unerrored_codewords.add_metric(labels, unerrored)
             ds_correctable_codewords.add_metric(labels, correctable)
             ds_uncorrectable_codewords.add_metric(labels, uncorrectable)
@@ -160,9 +168,13 @@ class DownstreamStatusExtractor(XmlMetricsExtractor):
 
 class UpstreamStatusExtractor(XmlMetricsExtractor):
     def __init__(self, logger: Logger):
-        super(UpstreamStatusExtractor, self).__init__(UPSTREAM, {GET.UPSTREAM_TABLE}, logger)
+        super(UpstreamStatusExtractor, self).__init__(
+            UPSTREAM, {GET.UPSTREAM_TABLE}, logger
+        )
 
-    def extract(self, raw_xmls: Dict[int, bytes]) -> Iterable[Metric]:
+    def extract(
+        self, raw_xmls: Dict[int, bytes], source: Optional[str] = None
+    ) -> Iterable[Metric]:
         assert len(raw_xmls) == 1
 
         CHANNEL_ID = "channel_id"
@@ -172,24 +184,24 @@ class UpstreamStatusExtractor(XmlMetricsExtractor):
             "connectbox_upstream_frequency",
             "Upstream channel frequency",
             unit="hz",
-            labels=[CHANNEL_ID],
+            labels=[SOURCE, CHANNEL_ID],
         )
         us_power_level = GaugeMetricFamily(
             "connectbox_upstream_power_level",
             "Upstream channel power level",
             unit="dbmv",
-            labels=[CHANNEL_ID],
+            labels=[SOURCE, CHANNEL_ID],
         )
         us_symbol_rate = GaugeMetricFamily(
             "connectbox_upstream_symbol_rate",
             "Upstream channel symbol rate",
             unit="ksps",
-            labels=[CHANNEL_ID],
+            labels=[SOURCE, CHANNEL_ID],
         )
         us_timeouts = CounterMetricFamily(
             "connectbox_upstream_timeouts",
             "Upstream channel timeout occurrences",
-            labels=[CHANNEL_ID, TIMEOUT_TYPE],
+            labels=[SOURCE, CHANNEL_ID, TIMEOUT_TYPE],
         )
         root = etree.fromstring(
             raw_xmls[GET.UPSTREAM_TABLE], parser=self._parsers[GET.UPSTREAM_TABLE]
@@ -205,7 +217,7 @@ class UpstreamStatusExtractor(XmlMetricsExtractor):
             t3_timeouts = int(channel.find("t3Timeouts").text)
             t4_timeouts = int(channel.find("t4Timeouts").text)
 
-            labels = [channel_id.zfill(2)]
+            labels = [source, channel_id.zfill(2)]
             us_frequency.add_metric(labels, frequency)
             us_power_level.add_metric(labels, power_level)
             us_symbol_rate.add_metric(labels, symbol_rate)
@@ -220,7 +232,9 @@ class LanUserExtractor(XmlMetricsExtractor):
     def __init__(self, logger: Logger):
         super(LanUserExtractor, self).__init__(LAN_USERS, {GET.LANUSERTABLE}, logger)
 
-    def extract(self, raw_xmls: Dict[int, bytes]) -> Iterable[Metric]:
+    def extract(
+        self, raw_xmls: Dict[int, bytes], source: Optional[str] = None
+    ) -> Iterable[Metric]:
         assert len(raw_xmls) == 1
 
         root = etree.fromstring(
@@ -228,7 +242,7 @@ class LanUserExtractor(XmlMetricsExtractor):
         )
 
         # LAN and Wi-Fi clients have the same XML format so we can reuse the code to extract their values
-        def extract_client(client, target_metric: GaugeMetricFamily):
+        def extract_client(client, source: str, target_metric: GaugeMetricFamily):
             mac_address = client.find("MACAddr").text
 
             # depending on the firmware, both IPv4/IPv6 addresses or only one of both are reported
@@ -244,10 +258,16 @@ class LanUserExtractor(XmlMetricsExtractor):
             hostname = client.find("hostname").text
             speed = int(client.find("speed").text)
             target_metric.add_metric(
-                [mac_address, ipv4_address, ipv6_address, hostname], speed
+                [source, mac_address, ipv4_address, ipv6_address, hostname], speed
             )
 
-        label_names = ["mac_address", "ipv4_address", "ipv6_address", "hostname"]
+        label_names = [
+            SOURCE,
+            "mac_address",
+            "ipv4_address",
+            "ipv6_address",
+            "hostname",
+        ]
 
         # set up ethernet user speed metric
         ethernet_user_speed = GaugeMetricFamily(
@@ -257,7 +277,7 @@ class LanUserExtractor(XmlMetricsExtractor):
             unit="mbit",
         )
         for client in root.find("Ethernet").findall("clientinfo"):
-            extract_client(client, ethernet_user_speed)
+            extract_client(client, source, ethernet_user_speed)
         yield ethernet_user_speed
 
         # set up Wi-Fi user speed metric
@@ -268,7 +288,7 @@ class LanUserExtractor(XmlMetricsExtractor):
             unit="mbit",
         )
         for client in root.find("WIFI").findall("clientinfo"):
-            extract_client(client, wifi_user_speed)
+            extract_client(client, source, wifi_user_speed)
         yield wifi_user_speed
 
 
@@ -276,7 +296,9 @@ class TemperatureExtractor(XmlMetricsExtractor):
     def __init__(self, logger: Logger):
         super(TemperatureExtractor, self).__init__(TEMPERATURE, {GET.CMSTATE}, logger)
 
-    def extract(self, raw_xmls: Dict[int, bytes]) -> Iterable[Metric]:
+    def extract(
+        self, raw_xmls: Dict[int, bytes], source: Optional[str] = None
+    ) -> Iterable[Metric]:
         assert len(raw_xmls) == 1
 
         root = etree.fromstring(
@@ -289,18 +311,23 @@ class TemperatureExtractor(XmlMetricsExtractor):
         )
         temperature = fahrenheit_to_celsius(float(root.find("Temperature").text))
 
-        yield GaugeMetricFamily(
+        tuner_temperature_metric = GaugeMetricFamily(
             "connectbox_tuner_temperature",
             "Tuner temperature",
             unit="celsius",
-            value=tuner_temperature,
+            labels=[SOURCE],
         )
-        yield GaugeMetricFamily(
+        tuner_temperature_metric.add_metric([source], tuner_temperature)
+
+        box_temperature_metric = GaugeMetricFamily(
             "connectbox_temperature",
             "Temperature",
             unit="celsius",
-            value=temperature,
+            labels=[SOURCE],
         )
+        box_temperature_metric.add_metric([source], temperature)
+
+        yield from [tuner_temperature_metric, box_temperature_metric]
 
 
 class ProvisioningStatus(Enum):
@@ -309,10 +336,10 @@ class ProvisioningStatus(Enum):
     PARTIAL_SERVICE_DS = "Partial Service (DS only)"
     PARTIAL_SERVICE_USDS = "Partial Service (US+DS)"
     MODEM_MODE = "Modem Mode"
-    DS_SCANNING = "DS scanning"     # confirmed to exist
-    US_SCANNING = "US scanning"     # probably exists too
-    US_RANGING = "US ranging"       # confirmed to exist
-    DS_RANGING = "DS ranging"       # probably exists too
+    DS_SCANNING = "DS scanning"  # confirmed to exist
+    US_SCANNING = "US scanning"  # probably exists too
+    US_RANGING = "US ranging"  # confirmed to exist
+    DS_RANGING = "DS ranging"  # probably exists too
     REQUESTING_CM_IP_ADDRESS = "Requesting CM IP address"
 
     # default case for all future unknown provisioning status
@@ -322,10 +349,14 @@ class ProvisioningStatus(Enum):
 class DeviceStatusExtractor(XmlMetricsExtractor):
     def __init__(self, logger: Logger):
         super(DeviceStatusExtractor, self).__init__(
-            DEVICE_STATUS, {GET.GLOBALSETTINGS, GET.CM_SYSTEM_INFO, GET.CMSTATUS}, logger
+            DEVICE_STATUS,
+            {GET.GLOBALSETTINGS, GET.CM_SYSTEM_INFO, GET.CMSTATUS},
+            logger,
         )
 
-    def extract(self, raw_xmls: Dict[int, bytes]) -> Iterable[Metric]:
+    def extract(
+        self, raw_xmls: Dict[int, bytes], source: Optional[str] = None
+    ) -> Iterable[Metric]:
         assert len(raw_xmls) == 3
 
         # parse GlobalSettings
@@ -357,10 +388,14 @@ class DeviceStatusExtractor(XmlMetricsExtractor):
         cable_modem_status = root.find("cm_comment").text
         provisioning_status = root.find("provisioning_st").text
 
-        yield InfoMetricFamily(
+        info_metric = InfoMetricFamily(
             "connectbox_device",
             "Assorted device information",
-            value={
+            labels=[SOURCE],
+        )
+        info_metric.add_metric(
+            [source],
+            {
                 "hardware_version": hardware_version,
                 "firmware_version": firmware_version,
                 "docsis_mode": docsis_mode,
@@ -370,42 +405,56 @@ class DeviceStatusExtractor(XmlMetricsExtractor):
                 "operator_id": operator_id,
             },
         )
+        yield info_metric
 
         # return an enum-style metric for the provisioning status
         try:
             enum_provisioning_status = ProvisioningStatus(provisioning_status)
         except ValueError:
-            self._logger.warning(f"Unknown provisioning status '{provisioning_status}'. Please open an issue on Github.")
+            self._logger.warning(
+                f"Unknown provisioning status '{provisioning_status}'. Please open an issue on Github."
+            )
             enum_provisioning_status = ProvisioningStatus.UNKNOWN
 
-        yield StateSetMetricFamily(
+        provisioning_metric = StateSetMetricFamily(
             "connectbox_provisioning_status",
             "Provisioning status description",
-            value={
+            labels=[SOURCE],
+        )
+        provisioning_metric.add_metric(
+            [source],
+            {
                 state.value: state == enum_provisioning_status
                 for state in ProvisioningStatus
             },
         )
+        yield provisioning_metric
 
         # uptime is reported in a format like "36day(s)15h:24m:58s" which needs parsing
         uptime_pattern = r"(\d+)day\(s\)(\d+)h:(\d+)m:(\d+)s"
         m = re.fullmatch(uptime_pattern, uptime_as_str)
         if m is not None:
-            uptime_timedelta = timedelta(days=int(m[1]), hours=int(m[2]), minutes=int(m[3]), seconds=int(m[4]))
+            uptime_timedelta = timedelta(
+                days=int(m[1]), hours=int(m[2]), minutes=int(m[3]), seconds=int(m[4])
+            )
             uptime_seconds = uptime_timedelta.total_seconds()
         else:
-            self._logger.warning(f"Unexpected duration format '{uptime_as_str}', please open an issue on github.")
+            self._logger.warning(
+                f"Unexpected duration format '{uptime_as_str}', please open an issue on github."
+            )
             uptime_seconds = -1
 
-        yield GaugeMetricFamily(
+        uptime_metric = GaugeMetricFamily(
             "connectbox_uptime",
             "Device uptime in seconds",
             unit="seconds",
-            value=uptime_seconds,
+            labels=[SOURCE],
         )
+        uptime_metric.add_metric([source], uptime_seconds)
+        yield uptime_metric
 
 
-def get_metrics_extractor(ident: str, logger: Logger):
+def get_metrics_extractor(ident: str, logger: Logger) -> Extractor:
     """
     Factory method for metrics extractors.
     :param ident: metric extractor identifier

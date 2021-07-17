@@ -23,7 +23,7 @@ from connectbox_exporter.config import (
     EXTRACTORS,
 )
 from connectbox_exporter.logger import get_logger, VerboseLogger
-from connectbox_exporter.xml2metric import get_metrics_extractor
+from connectbox_exporter.xml2metric import SOURCE, get_metrics_extractor
 
 
 # Taken 1:1 from prometheus-client==0.7.1, see https://github.com/prometheus/client_python/blob/3cb4c9247f3f08dfbe650b6bdf1f53aa5f6683c1/prometheus_client/exposition.py
@@ -89,7 +89,7 @@ class ConnectBoxCollector(object):
                             f"Raw XML response for fun={fun}:\n{raw_xml.decode()}"
                         )
                         raw_xmls[fun] = raw_xml
-                    yield from extractor.extract(raw_xmls)
+                    yield from extractor.extract(raw_xmls, source=self.ip_address)
                     post_scrape_time = time.time()
 
                     scrape_duration[extractor.name] = post_scrape_time - pre_scrape_time
@@ -119,19 +119,19 @@ class ConnectBoxCollector(object):
             "connectbox_scrape_duration",
             documentation="Scrape duration by extractor",
             unit="seconds",
-            labels=[EXTRACTOR],
+            labels=[EXTRACTOR, SOURCE],
         )
         for name, duration in scrape_duration.items():
-            scrape_duration_metric.add_metric([name], duration)
+            scrape_duration_metric.add_metric([name, self.ip_address], duration)
         yield scrape_duration_metric
 
         scrape_success_metric = GaugeMetricFamily(
             "connectbox_up",
             documentation="Connect Box exporter scrape success by extractor",
-            labels=[EXTRACTOR],
+            labels=[EXTRACTOR, SOURCE],
         )
         for name, success in scrape_success.items():
-            scrape_success_metric.add_metric([name], int(success))
+            scrape_success_metric.add_metric([name, self.ip_address], int(success))
         yield scrape_success_metric
 
 
